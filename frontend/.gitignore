@@ -1,0 +1,59 @@
+# ============================
+# ANDROID / ANDROID STUDIO
+# ============================
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration
+local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+!.idea/codeStyles
+!.idea/misc.xml
+!.idea/vcs.xml
+
+# NDK / C++
+.cxx/
+externalNativeBuild/
+
+# Generated files
+captures/
+output.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ============================
+# BACKEND (si usas Node.js)
+# ============================
+node_modules/
+dist/
+.env
+
+# ============================
+# PYTHON (si lo usas)
+# ============================
+__pycache__/
+*.pyc
+
+# ============================
+# JAVA / MAVEN (si lo usas)
+# ============================
+target/
+
+# ============================
+# LOGS
+# ============================
+*.log
