@@ -22,7 +22,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.MyApplicationTheme
@@ -32,19 +31,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme(){
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    DigitalNebulaLoginScreen(
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+            MyApplicationTheme {
+                AppNavigation()
             }
         }
     }
 }
 
 @Composable
-fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
+fun DigitalNebulaLoginScreen(
+    modifier: Modifier = Modifier,
+    onLoginSuccess: () -> Unit
+) {
 
     val primaryGreen = Color(0xFF00FF85)
 
@@ -52,7 +50,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
     ) {
-        // Fondo con imagen
         Image(
             painter = painterResource(id = R.drawable.imagen_login),
             contentDescription = null,
@@ -60,7 +57,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Crop
         )
 
-        // Overlay oscuro para mejorar legibilidad
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,7 +70,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
 
-            // HEADER
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
@@ -109,7 +104,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
                 )
             }
 
-            // FORMULARIO
             Column {
 
                 // Email
@@ -141,7 +135,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Contraseña + Olvidaste
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -182,9 +175,11 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Botón login con sombra
                 Button(
-                    onClick = { },
+                    onClick = {
+                        onLoginSuccess()
+                    }
+                    ,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
@@ -202,7 +197,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Separador
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -218,7 +212,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Google / Apple
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -243,7 +236,6 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
                 }
             }
 
-            // FOOTER
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -257,10 +249,4 @@ fun DigitalNebulaLoginScreen(modifier: Modifier = Modifier) {
 
 
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewLogin() {
-    MyApplicationTheme() {
-        DigitalNebulaLoginScreen()
-    }
-}
+
