@@ -34,5 +34,18 @@ fun AppNavigation() {
             TicketsScreen(navController)
         }
 
+        composable("add") {
+            AddTicketScreen(navController)
+        }
+
+
+        composable("compare") {
+            //CompareScreen(navController)
+        }
+
+        composable("profile") {
+            //ProfileScreen(navController)
+        }
+
     }
 }
