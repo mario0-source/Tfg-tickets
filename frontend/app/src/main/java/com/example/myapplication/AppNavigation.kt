@@ -44,7 +44,7 @@ fun AppNavigation() {
         }
 
         composable("profile") {
-            //ProfileScreen(navController)
+            ProfileScreen(navController)
         }
 
     }
