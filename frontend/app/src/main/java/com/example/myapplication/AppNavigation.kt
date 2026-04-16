@@ -40,7 +40,7 @@ fun AppNavigation() {
 
 
         composable("compare") {
-            //CompareScreen(navController)
+            DashboardScreen(navController)
         }
 
         composable("profile") {
