@@ -1,0 +1,19 @@
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP / Symfony
+/backend/vendor/
+/backend/var/
+/backend/.env.local
+
+# Node (si hay frontend web)
+/frontend/node_modules/
+/frontend/dist/
+
+# Logs
+*.log
