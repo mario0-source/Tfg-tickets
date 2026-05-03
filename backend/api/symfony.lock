@@ -35,6 +35,18 @@
             "./migrations/.gitignore"
         ]
     },
+    "lexik/jwt-authentication-bundle": {
+        "version": "3.2",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "2.5",
+            "ref": "e9481b233a11ef7e15fe055a2b21fd3ac1aa2bb7"
+        },
+        "files": [
+            "./config/packages/lexik_jwt_authentication.yaml"
+        ]
+    },
     "phpunit/phpunit": {
         "version": "13.1",
         "recipe": {
@@ -229,21 +241,6 @@
             "./config/routes/security.yaml"
         ]
     },
-    "symfony/stimulus-bundle": {
-        "version": "3.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "2.24",
-            "ref": "d21494ed2ddbde38942e8278299a23ce5cf4a9a1"
-        },
-        "files": [
-            "./assets/controllers.json",
-            "./assets/controllers/csrf_protection_controller.js",
-            "./assets/controllers/hello_controller.js",
-            "./assets/stimulus_bootstrap.js"
-        ]
-    },
     "symfony/translation": {
         "version": "8.0",
         "recipe": {
@@ -268,18 +265,6 @@
         "files": [
             "./config/packages/twig.yaml",
             "./templates/base.html.twig"
-        ]
-    },
-    "symfony/ux-turbo": {
-        "version": "3.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "2.20",
-            "ref": "287f7c6eb6e9b65e422d34c00795b360a787380b"
-        },
-        "files": [
-            "./config/packages/ux_turbo.yaml"
         ]
     },
     "symfony/validator": {
