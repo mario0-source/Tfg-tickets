@@ -17,6 +17,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import android.content.Context
+import android.util.Log
+import androidx.compose.ui.platform.LocalContext
+import com.example.myapplication.model.LoginRequest
+import com.example.myapplication.model.LoginResponse
+import com.example.myapplication.network.RetrofitClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -25,6 +34,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.MyApplicationTheme
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +55,7 @@ fun DigitalNebulaLoginScreen(
 ) {
 
     val primaryGreen = Color(0xFF00FF85)
+    val context = LocalContext.current
 
     Box(
         modifier = modifier
@@ -177,7 +188,52 @@ fun DigitalNebulaLoginScreen(
 
                 Button(
                     onClick = {
-                        onLoginSuccess()
+
+                        val request = LoginRequest(
+                            email = email,
+                            password = password
+                        )
+
+                        RetrofitClient.api.login(request)
+                            .enqueue(object : Callback<LoginResponse> {
+
+                                override fun onResponse(
+                                    call: Call<LoginResponse>,
+                                    response: Response<LoginResponse>
+                                ) {
+
+                                    if (response.isSuccessful) {
+
+                                        val token = response.body()?.token
+
+                                        // guardar token
+                                        val prefs = context.getSharedPreferences(
+                                            "auth",
+                                            Context.MODE_PRIVATE
+                                        )
+
+                                        prefs.edit()
+                                            .putString("token", token)
+                                            .apply()
+
+                                        Log.d("LOGIN", "TOKEN: $token")
+
+                                        onLoginSuccess()
+
+                                    } else {
+
+                                        Log.e("LOGIN", "Credenciales incorrectas")
+                                    }
+                                }
+
+                                override fun onFailure(
+                                    call: Call<LoginResponse>,
+                                    t: Throwable
+                                ) {
+
+                                    Log.e("LOGIN", t.message ?: "Error")
+                                }
+                            })
                     }
                     ,
                     modifier = Modifier
