@@ -5,7 +5,8 @@
 # OS
 .DS_Store
 Thumbs.db
-
+/config/jwt/private.pem
+/config/jwt/public.pem
 # PHP / Symfony
 /backend/vendor/
 /backend/var/

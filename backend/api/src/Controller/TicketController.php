@@ -4,7 +4,6 @@ namespace App\Controller;
 
 use App\Entity\Ticket;
 use App\Repository\TicketRepository;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -38,8 +37,7 @@ final class TicketController extends AbstractController
     #[Route('/api/tickets', methods: ['POST'])]
     public function createTicket(
         Request $request,
-        EntityManagerInterface $em,
-        UserRepository $userRepository
+        EntityManagerInterface $em
     ): JsonResponse {
 
         $data = json_decode($request->getContent(), true);
@@ -50,23 +48,22 @@ final class TicketController extends AbstractController
             ], 400);
         }
 
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        if (!$user) {
+            return $this->json([
+                'error' => 'Usuario no autenticado'
+            ], 401);
+        }
+
         $ticket = new Ticket();
         $ticket->setNombre($data['nombre']);
         $ticket->setPrecio($data['precio']);
         $ticket->setCategoria($data['categoria'] ?? null);
         $ticket->setFecha(new \DateTime());
 
-        // 🔥 MEJORADO: usuario desde request (NO hardcode)
-        if (!isset($data['user_id'])) {
-            return $this->json(['error' => 'user_id requerido'], 400);
-        }
-
-        $user = $userRepository->find($data['user_id']);
-
-        if (!$user) {
-            return $this->json(['error' => 'Usuario no encontrado'], 404);
-        }
-
+        // ✅ Relación automática con usuario autenticado
         $ticket->setUser($user);
 
         $em->persist($ticket);
@@ -80,7 +77,8 @@ final class TicketController extends AbstractController
                 'precio' => $ticket->getPrecio(),
                 'categoria' => $ticket->getCategoria(),
                 'fecha' => $ticket->getFecha()->format('Y-m-d H:i:s'),
-                'user_id' => $user->getId()
+                'user_id' => $user->getId(),
+                'user_email' => $user->getEmail()
             ]
         ], 201);
     }
