@@ -17,11 +17,17 @@ fun AppNavigation() {
     ) {
 
         composable("login") {
+
             DigitalNebulaLoginScreen(
+
                 onLoginSuccess = {
                     navController.navigate("home") {
                         popUpTo("login") { inclusive = true }
                     }
+                },
+
+                onNavigateToRegister = {
+                    navController.navigate("register")
                 }
             )
         }
@@ -45,6 +51,19 @@ fun AppNavigation() {
 
         composable("profile") {
             ProfileScreen(navController)
+        }
+        composable("register") {
+
+            RegisterScreen(
+
+                onRegisterSuccess = {
+                    navController.navigate("login")
+                },
+
+                onNavigateToLogin = {
+                    navController.navigate("login")
+                }
+            )
         }
 
     }

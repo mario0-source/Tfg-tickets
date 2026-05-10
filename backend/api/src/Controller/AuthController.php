@@ -53,4 +53,14 @@ class AuthController extends AbstractController
             'message' => 'Usuario registrado correctamente'
         ], 201);
     }
+    #[Route('/api/profile', methods: ['GET'])]
+    public function profile(): JsonResponse
+    {
+        $user = $this->getUser();
+
+        return $this->json([
+            'email' => $user->getUserIdentifier(),
+            'roles' => $user->getRoles()
+        ]);
+    }
 }

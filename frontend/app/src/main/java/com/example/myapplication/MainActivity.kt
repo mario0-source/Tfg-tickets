@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import com.example.myapplication.model.LoginRequest
 import com.example.myapplication.model.LoginResponse
@@ -51,12 +52,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DigitalNebulaLoginScreen(
     modifier: Modifier = Modifier,
-    onLoginSuccess: () -> Unit
-) {
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit
+){
 
     val primaryGreen = Color(0xFF00FF85)
     val context = LocalContext.current
-
+    var errorMessage by remember { mutableStateOf("") }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -206,7 +208,6 @@ fun DigitalNebulaLoginScreen(
 
                                         val token = response.body()?.token
 
-                                        // guardar token
                                         val prefs = context.getSharedPreferences(
                                             "auth",
                                             Context.MODE_PRIVATE
@@ -222,7 +223,7 @@ fun DigitalNebulaLoginScreen(
 
                                     } else {
 
-                                        Log.e("LOGIN", "Credenciales incorrectas")
+                                        errorMessage = "Correo o contraseña incorrectos"
                                     }
                                 }
 
@@ -231,11 +232,10 @@ fun DigitalNebulaLoginScreen(
                                     t: Throwable
                                 ) {
 
-                                    Log.e("LOGIN", t.message ?: "Error")
+                                    errorMessage = "Error de conexión con el servidor"
                                 }
                             })
-                    }
-                    ,
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
@@ -243,11 +243,24 @@ fun DigitalNebulaLoginScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = primaryGreen),
                     shape = RoundedCornerShape(16.dp)
                 ) {
+
                     Text(
                         text = "Iniciar Sesión",
                         color = Color(0xFF020208),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (errorMessage.isNotEmpty()) {
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -297,7 +310,15 @@ fun DigitalNebulaLoginScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text("¿No tienes una cuenta? ", color = Color(0xFFCCCCCC), fontSize = 13.sp)
-                Text("Crear una cuenta", color = primaryGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Crear una cuenta",
+                    color = primaryGreen,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable {
+                        onNavigateToRegister()
+                    }
+                )
             }
         }
     }
