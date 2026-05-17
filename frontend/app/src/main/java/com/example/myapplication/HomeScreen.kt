@@ -4,8 +4,10 @@ package com.example.myapplication
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -21,13 +23,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.myapplication.ui.home.HomeViewModel
 
 @Composable
 fun HomeDashboardScreen(navController: NavHostController) {
 
     val primaryGreen = Color(0xFF00FF85)
+    val viewModel: HomeViewModel = viewModel()
 
+    val state by viewModel.state.collectAsState()
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = { BottomNavigationBar(navController) }
@@ -50,102 +56,111 @@ fun HomeDashboardScreen(navController: NavHostController) {
                     .background(Color.Black.copy(alpha = 0.25f))
             )
 
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .padding(20.dp)
+                    .padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.perfil),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Icon(
-                        painter = painterResource(id = R.drawable.imagen_login),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                item {
 
-                Spacer(modifier = Modifier.height(20.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.perfil),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Icon(
+                            painter = painterResource(id = R.drawable.imagen_login),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
 
-                Text("GASTO MENSUAL", color = Color(0xFFB0B0C0), fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                Text(
-                    text = "126.80€",
-                    color = Color.White,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                    Text("GASTO MENSUAL", color = Color(0xFFB0B0C0), fontSize = 13.sp)
 
-                Text(
-                    text = "+12%",
-                    color = primaryGreen,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard(title = "TICKETS", value = "24")
-                    StatCard(title = "CATEGORÍAS", value = "8")
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryGreen),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
                     Text(
-                        text = "Añadir Ticket",
-                        color = Color(0xFF020208),
-                        fontSize = 16.sp,
+                        text = "${state.total}€",
+                        color = Color.White,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "+12%",
+                        color = primaryGreen,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        StatCard(title = "TICKETS", value = state.ticketsCount.toString())
+                        StatCard(title = "CATEGORÍAS", value = "8")
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = { },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryGreen),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = "Añadir Ticket",
+                            color = Color(0xFF020208),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        InfoCard(title = "PERSPECTIVAS", subtitle = "Ahorro Inteligente")
+                        InfoCard(title = "PRÓXIMOS", subtitle = "3 Suscripciones")
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Tickets Recientes",
+                        color = Color.White,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                items(state.tickets) { ticket ->
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    InfoCard(title = "PERSPECTIVAS", subtitle = "Ahorro Inteligente")
-                    InfoCard(title = "PRÓXIMOS", subtitle = "3 Suscripciones")
+                    TicketItem(
+                        name = ticket.nombre,
+                        price = "${ticket.precio}€",
+                        category = ticket.categoria,
+                        time = ticket.fecha
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = "Tickets Recientes",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                TicketItem("Starbucks Reserve", "5.40€", "COMIDA", "Hoy, 08:42 AM")
-                TicketItem("Whole Foods Market", "42.15€", "DESPENSA", "Ayer, 06:15 PM")
-                TicketItem("Nike Flagship", "79.25€", "MODA", "24 Oct, 02:30 PM")
             }
         }
     }

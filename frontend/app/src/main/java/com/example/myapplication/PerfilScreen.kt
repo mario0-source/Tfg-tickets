@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.myapplication.auth.SessionManager
+import com.example.myapplication.network.RetrofitClient
 
 @Composable
 fun ProfileScreen(navController: NavHostController) {
@@ -145,7 +147,18 @@ fun ProfileScreen(navController: NavHostController) {
 
                 // 🔹 Botón cerrar sesión
                 Button(
-                    onClick = { /* logout */ },
+                    onClick = {
+
+                        val context = navController.context
+                        val sessionManager = SessionManager(context)
+
+                        sessionManager.clearToken()
+                        RetrofitClient.setToken(null)
+
+                        navController.navigate("login") {
+                            popUpTo(0) // limpia toda la pila
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
