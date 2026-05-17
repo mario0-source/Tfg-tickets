@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.auth.SessionManager
 import com.example.myapplication.ui.theme.MyApplicationTheme
 
 
@@ -52,7 +53,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DigitalNebulaLoginScreen(
     modifier: Modifier = Modifier,
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (String) -> Unit,
     onNavigateToRegister: () -> Unit
 ){
 
@@ -208,18 +209,25 @@ fun DigitalNebulaLoginScreen(
 
                                         val token = response.body()?.token
 
-                                        val prefs = context.getSharedPreferences(
-                                            "auth",
-                                            Context.MODE_PRIVATE
-                                        )
+                                        val sessionManager = SessionManager(context)
 
-                                        prefs.edit()
-                                            .putString("token", token)
-                                            .apply()
+                                        sessionManager.saveToken(token)
+
+                                        RetrofitClient.setToken(token)
 
                                         Log.d("LOGIN", "TOKEN: $token")
 
-                                        onLoginSuccess()
+                                        if (!token.isNullOrEmpty()) {
+
+                                            val sessionManager = SessionManager(context)
+                                            sessionManager.saveToken(token)
+
+                                            RetrofitClient.setToken(token)
+
+                                            Log.d("LOGIN", "TOKEN: $token")
+
+                                            onLoginSuccess(token)
+                                        }
 
                                     } else {
 
