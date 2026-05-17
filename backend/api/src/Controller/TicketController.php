@@ -15,7 +15,12 @@ final class TicketController extends AbstractController
     #[Route('/api/tickets', methods: ['GET'])]
     public function getTickets(TicketRepository $ticketRepository): JsonResponse
     {
-        $tickets = $ticketRepository->findAll();
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        $tickets = $ticketRepository->findBy([
+            'user' => $user
+        ]);
 
         $data = [];
 
