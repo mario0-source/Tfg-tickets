@@ -240,7 +240,9 @@ fun DigitalNebulaLoginScreen(
                                     t: Throwable
                                 ) {
 
-                                    errorMessage = "Error de conexión con el servidor"
+                                    Log.e("API_ERROR", t.message.toString())
+
+                                    errorMessage = t.message.toString()
                                 }
                             })
                     },
