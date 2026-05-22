@@ -39,6 +39,39 @@ final class TicketController extends AbstractController
         return $this->json($data);
     }
 
+    // 👇 MÉTODO NUEVO
+    #[Route('/api/stats/monthly-expense', methods: ['GET'])]
+    public function monthlyExpense(
+        TicketRepository $ticketRepository
+    ): JsonResponse {
+
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        $tickets = $ticketRepository->findBy([
+            'user' => $user
+        ]);
+
+        $total = 0;
+        $categories = [];
+
+        foreach ($tickets as $ticket) {
+
+            $total += $ticket->getPrecio();
+
+            if ($ticket->getCategoria()) {
+                $categories[] = $ticket->getCategoria();
+            }
+        }
+
+        return $this->json([
+            'total' => $total,
+            'variationPercent' => 12,
+            'ticketsCount' => count($tickets),
+            'categoriesCount' => count(array_unique($categories))
+        ]);
+    }
+
     #[Route('/api/tickets', methods: ['POST'])]
     public function createTicket(
         Request $request,
@@ -68,7 +101,6 @@ final class TicketController extends AbstractController
         $ticket->setCategoria($data['categoria'] ?? null);
         $ticket->setFecha(new \DateTime());
 
-        // ✅ Relación automática con usuario autenticado
         $ticket->setUser($user);
 
         $em->persist($ticket);
