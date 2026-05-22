@@ -21,38 +21,37 @@ class HomeViewModel : ViewModel() {
 
     private fun loadData() {
 
-        viewModelScope.launch {
 
-            try {
 
-                _state.value = _state.value.copy(loading = true)
+            viewModelScope.launch {
 
-                val tickets = repository.getTickets()
+                try {
 
-                Log.d("API_TICKETS", tickets.toString()) // 👈 DEBUG
+                    _state.value = _state.value.copy(loading = true)
 
-                //val stats = repository.getStats()
+                    val tickets = repository.getTickets()
 
-                //Log.d("API_STATS", stats.toString()) // 👈 DEBUG
+                    val stats = repository.getStats()
 
-                _state.value = HomeUiState(
-                    loading = false,
-                    tickets = tickets,
-                    //total = stats.total,
-                    //variation = stats.variationPercent,
-                    //ticketsCount = stats.ticketsCount,
-                    //categoriesCount = stats.categoriesCount
-                )
+                    _state.value = HomeUiState(
+                        loading = false,
+                        tickets = tickets,
+                        total = stats.total,
+                        variation = stats.variationPercent,
+                        ticketsCount = stats.ticketsCount,
+                        categoriesCount = stats.categoriesCount
+                    )
 
-            } catch (e: Exception) {
+                } catch (e: Exception) {
 
-                Log.e("API_ERROR", e.message ?: "error")
+                    Log.e("API_ERROR", e.message ?: "error")
 
-                _state.value = HomeUiState(
-                    loading = false,
-                    error = e.message
-                )
+                    _state.value = HomeUiState(
+                        loading = false,
+                        error = e.message
+                    )
+                }
             }
         }
-    }
+
 }
