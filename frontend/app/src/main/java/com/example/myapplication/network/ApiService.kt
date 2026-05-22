@@ -1,5 +1,6 @@
 package com.example.myapplication.network
 
+import com.example.myapplication.model.CreateTicketRequest
 import com.example.myapplication.model.LoginRequest
 import com.example.myapplication.model.LoginResponse
 import com.example.myapplication.model.MonthlyExpenseDto
@@ -22,6 +23,13 @@ interface ApiService {
     @GET("api/tickets")
     suspend fun getTickets(): List<TicketDto>
 
-    @GET("api/stats/monthly")
+    @POST("api/tickets")
+    fun createTicket(
+        @Body request: CreateTicketRequest
+    ): Call<Map<String, Any>>
+
+    @GET("api/stats/monthly-expense")
     suspend fun getMonthlyExpense(): MonthlyExpenseDto
+
+
 }
