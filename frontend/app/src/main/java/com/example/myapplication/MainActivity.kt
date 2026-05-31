@@ -212,20 +212,13 @@ fun DigitalNebulaLoginScreen(
                                         val sessionManager = SessionManager(context)
 
                                         sessionManager.saveToken(token)
+                                        sessionManager.saveEmail(email)
 
                                         RetrofitClient.setToken(token)
 
                                         Log.d("LOGIN", "TOKEN: $token")
 
                                         if (!token.isNullOrEmpty()) {
-
-                                            val sessionManager = SessionManager(context)
-                                            sessionManager.saveToken(token)
-
-                                            RetrofitClient.setToken(token)
-
-                                            Log.d("LOGIN", "TOKEN: $token")
-
                                             onLoginSuccess(token)
                                         }
 

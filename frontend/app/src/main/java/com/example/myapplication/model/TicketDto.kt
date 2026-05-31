@@ -17,5 +17,8 @@ data class TicketDto(
     val categoria: String,
 
     @SerializedName("fecha")
-    val fecha: String
+    val fecha: String,
+
+    @SerializedName("productos")
+    val productos: List<ProductDto> = emptyList()
 )

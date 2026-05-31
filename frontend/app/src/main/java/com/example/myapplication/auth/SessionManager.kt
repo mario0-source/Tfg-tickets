@@ -12,6 +12,16 @@ class SessionManager(private val context: Context) {
             .apply()
     }
 
+    fun saveEmail(email: String?) {
+        prefs.edit()
+            .putString("email", email)
+            .apply()
+    }
+
+    fun getEmail(): String? {
+        return prefs.getString("email", null)
+    }
+
     fun getToken(): String? {
         return prefs.getString("jwt", null)
     }
@@ -19,6 +29,7 @@ class SessionManager(private val context: Context) {
     fun clearToken() {
         prefs.edit()
             .remove("jwt")
+            .remove("email")
             .apply()
     }
 }

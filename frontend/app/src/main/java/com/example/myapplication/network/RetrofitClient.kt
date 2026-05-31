@@ -6,8 +6,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    private const val BASE_URL = "http://192.168.1.11:8000/"
-    //10.0.2.2
+    // Producción (IONOS)
+    private const val BASE_URL = "http://nebulatickets.es/"
+    // Local emulador: "http://10.0.2.2:8000/"
+    // Local dispositivo WiFi: "http://192.168.1.11:8000/"
     private var jwtToken: String? = null
 
     fun setToken(token: String?) {

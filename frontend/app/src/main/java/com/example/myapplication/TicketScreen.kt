@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -140,7 +140,7 @@ fun TicketsScreen(navController: NavHostController) {
                             )
 
                             Text(
-                                "${state.total}€",
+                                "%.2f€".format(state.total),
                                 color = Color.White,
                                 fontSize = 32.sp,
                                 fontWeight = FontWeight.Bold
@@ -221,25 +221,32 @@ fun TicketsScreen(navController: NavHostController) {
 
                     TicketRow(
                         store = ticket.nombre,
-                        price = "${ticket.precio}€",
+                        price = "%.2f€".format(ticket.precio),
                         category = ticket.categoria,
-                        date = ticket.fecha
+                        date = ticket.fecha,
+                        onClick = {
+                            navController.navigate("ticketDetail/${ticket.id}")
+                        }
                     )
                 }
             }
         }
     }
-}@Composable
+}
+
+@Composable
 fun TicketRow(
     store: String,
     price: String,
     category: String,
-    date: String
+    date: String,
+    onClick: () -> Unit = {}
 ) {
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

@@ -33,14 +33,11 @@ class TicketsViewModel : ViewModel() {
         loadTickets()
     }
 
-    private fun loadTickets() {
-
+    fun loadTickets() {
         viewModelScope.launch {
-
+            _state.value = _state.value.copy(loading = true)
             try {
-
                 val tickets = repository.getTickets()
-
                 val total = tickets.sumOf { it.precio }
 
                 _state.value = TicketsUiState(
@@ -48,13 +45,12 @@ class TicketsViewModel : ViewModel() {
                     total = total,
                     ticketsCount = tickets.size
                 )
-
             } catch (e: Exception) {
-
-                _state.value = TicketsUiState(
-                    error = e.message
-                )
+                _state.value = TicketsUiState(error = e.message)
             }
         }
     }
+
+    fun getTicketById(id: Int): TicketDto? =
+        _state.value.tickets.find { it.id == id }
 }
