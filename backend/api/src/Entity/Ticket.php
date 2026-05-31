@@ -26,6 +26,9 @@ class Ticket
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTime $fecha = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $productos = null;
+
     #[ORM\ManyToOne(inversedBy: 'tickets')]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
@@ -79,6 +82,18 @@ class Ticket
     public function setFecha(\DateTime $fecha): static
     {
         $this->fecha = $fecha;
+
+        return $this;
+    }
+
+    public function getProductos(): ?array
+    {
+        return $this->productos;
+    }
+
+    public function setProductos(?array $productos): static
+    {
+        $this->productos = $productos;
 
         return $this;
     }
