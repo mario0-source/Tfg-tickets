@@ -1,7 +1,15 @@
 nelmio_api_doc:
     documentation:
         info:
-            title: My App
+            title: Digital Nebula API
+            description: |
+                API REST del TFG tfg-tickets.
+
+                **Autenticación:** primero usa `POST /api/login_check` con email y password.
+                Copia el `token` de la respuesta y pulsa **Authorize** arriba a la derecha.
+                Introduce `Bearer <tu_token>` (Swagger añade "Bearer " automáticamente si solo pegas el token).
+
+                **Tickets:** obtén IDs válidos con `GET /api/tickets` antes de probar `GET/PUT/DELETE /api/tickets/{id}`.
             version: 1.0.0
 
         components:
@@ -10,6 +18,82 @@ nelmio_api_doc:
                     type: http
                     scheme: bearer
                     bearerFormat: JWT
+            schemas:
+                TicketInput:
+                    type: object
+                    required:
+                        - nombre
+                        - precio
+                    properties:
+                        nombre:
+                            type: string
+                            description: Nombre de la tienda
+                            example: Mercadona
+                        precio:
+                            type: number
+                            format: float
+                            description: Importe total del ticket
+                            example: 24.50
+                        categoria:
+                            type: string
+                            description: Categoría de la compra
+                            example: Alimentación
+                        productos:
+                            type: array
+                            description: Líneas de producto
+                            items:
+                                type: object
+                                required:
+                                    - nombre
+                                    - precio
+                                properties:
+                                    nombre:
+                                        type: string
+                                        example: Leche entera
+                                    precio:
+                                        type: number
+                                        format: float
+                                        example: 1.25
+                    example:
+                        nombre: Mercadona
+                        precio: 24.50
+                        categoria: Alimentación
+                        productos:
+                            - nombre: Leche entera
+                              precio: 1.25
+                            - nombre: Pan integral
+                              precio: 0.95
+                RegisterInput:
+                    type: object
+                    required:
+                        - email
+                        - password
+                    properties:
+                        email:
+                            type: string
+                            format: email
+                            example: nuevo.usuario@ejemplo.com
+                        password:
+                            type: string
+                            format: password
+                            example: "123456"
+                CompareEntryInput:
+                    type: object
+                    required:
+                        - productName
+                        - store
+                        - price
+                    properties:
+                        productName:
+                            type: string
+                            example: Leche entera
+                        store:
+                            type: string
+                            example: Carrefour
+                        price:
+                            type: number
+                            format: float
+                            example: 1.15
 
         security:
             - bearerAuth: []
@@ -18,3 +102,4 @@ nelmio_api_doc:
         default:
             path_patterns:
                 - ^/api
+            host_patterns: []

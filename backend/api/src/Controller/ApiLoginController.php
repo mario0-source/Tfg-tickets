@@ -7,12 +7,14 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[OA\Tag(name: 'Auth', description: 'Registro y autenticación')]
 class ApiLoginController extends AbstractController
 {
     #[Route('/api/login_check', name: 'api_login_check', methods: ['POST'])]
     #[OA\Post(
         path: '/api/login_check',
         summary: 'Login usuario',
+        security: [],
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
