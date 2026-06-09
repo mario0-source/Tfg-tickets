@@ -29,12 +29,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.myapplication.model.CompareProductSummary
+import androidx.compose.material3.MaterialTheme
 import com.example.myapplication.ui.compare.CompareViewModel
+import com.example.myapplication.ui.compare.ComparePriceRangeStrip
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
+import com.example.myapplication.ui.theme.NebulaTextSecondary
 
 @Composable
 fun CompareScreen(navController: NavHostController) {
 
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val viewModel: CompareViewModel = viewModel()
     val state by viewModel.state.collectAsState()
     var search by remember { mutableStateOf("") }
@@ -49,15 +54,7 @@ fun CompareScreen(navController: NavHostController) {
         containerColor = Color.Transparent,
         bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(id = R.drawable.imagen_login),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
-
+        NebulaScreenBackground(modifier = Modifier.fillMaxSize()) {
             if (state.loading) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center), color = primaryGreen)
             }
@@ -68,9 +65,20 @@ fun CompareScreen(navController: NavHostController) {
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    Text("Comparar Precios", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text("Comparar Precios", color = Color.White, style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(8.dp))
-                    Text("Selecciona un producto para comparar entre tiendas", color = Color(0xFFB0B0C0), fontSize = 14.sp)
+                    Text(
+                        "Compara el mismo producto en distintas tiendas",
+                        color = NebulaTextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Los productos salen de tus tickets. Pulsa uno para ver en qué tienda es más barato.",
+                        color = Color(0xFF888899),
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 18.sp
+                    )
                     Spacer(Modifier.height(16.dp))
 
                     OutlinedTextField(
@@ -103,9 +111,10 @@ fun CompareScreen(navController: NavHostController) {
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Text(
-                                "Escanea tickets con productos para comparar precios.",
+                                "Aún no hay productos para comparar.\n\nAñade tickets con productos (Mercadona, Carrefour…) y aparecerán aquí automáticamente.",
                                 color = Color(0xFFB0B0C0),
-                                modifier = Modifier.padding(20.dp)
+                                modifier = Modifier.padding(20.dp),
+                                lineHeight = 20.sp
                             )
                         }
                     }
@@ -157,7 +166,19 @@ fun CompareProductListCard(
                         fontSize = 12.sp
                     )
                     if (product.priceDiff > 0) {
-                        Text("-%.2f€ de ahorro posible".format(product.priceDiff), color = accent, fontSize = 11.sp)
+                        Spacer(Modifier.height(6.dp))
+                        ComparePriceRangeStrip(
+                            minPrice = product.minPrice,
+                            maxPrice = product.maxPrice,
+                            modifier = Modifier.fillMaxWidth(0.92f)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Hasta %.2f€ de diferencia".format(product.priceDiff),
+                            color = accent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }

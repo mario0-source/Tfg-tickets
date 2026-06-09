@@ -12,7 +12,9 @@ data class CompareDetailUiState(
     val loading: Boolean = true,
     val detail: CompareProductDetail? = null,
     val error: String? = null,
-    val saving: Boolean = false
+    val saving: Boolean = false,
+    val highlightStore: String? = null,
+    val saveMessage: String? = null
 )
 
 class CompareDetailViewModel : ViewModel() {
@@ -42,7 +44,13 @@ class CompareDetailViewModel : ViewModel() {
             _state.value = _state.value.copy(saving = true)
             try {
                 repository.addManualCompareEntry(productName, store, price)
-                loadProduct(productName, showLoading = false)
+                val detail = repository.getCompareProductDetail(productName)
+                _state.value = CompareDetailUiState(
+                    loading = false,
+                    detail = detail,
+                    highlightStore = store.trim(),
+                    saveMessage = "Precio en $store guardado"
+                )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     saving = false,
@@ -50,5 +58,9 @@ class CompareDetailViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    fun clearTransientFeedback() {
+        _state.value = _state.value.copy(highlightStore = null, saveMessage = null)
     }
 }
