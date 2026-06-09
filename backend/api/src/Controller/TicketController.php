@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Ticket;
 use App\Repository\TicketRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Throwable;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -128,21 +129,47 @@ final class TicketController extends AbstractController
 
         $tickets = $ticketRepository->findBy(['user' => $user]);
 
-        $total = 0.0;
+        $currentMonth = (new \DateTime())->format('Y-m');
+        $previousMonth = (new \DateTime('first day of last month'))->format('Y-m');
+
+        $currentMonthTotal = 0.0;
+        $previousMonthTotal = 0.0;
+        $ticketsThisMonth = 0;
         $categories = [];
 
         foreach ($tickets as $ticket) {
-            $total += $ticket->getPrecio() ?? 0.0;
+            $price = $ticket->getPrecio() ?? 0.0;
+            $fecha = $ticket->getFecha();
 
-            if ($ticket->getCategoria()) {
-                $categories[] = $ticket->getCategoria();
+            if ($fecha === null) {
+                continue;
+            }
+
+            $monthKey = $fecha->format('Y-m');
+
+            if ($monthKey === $currentMonth) {
+                $currentMonthTotal += $price;
+                ++$ticketsThisMonth;
+
+                if ($ticket->getCategoria()) {
+                    $categories[] = $ticket->getCategoria();
+                }
+            } elseif ($monthKey === $previousMonth) {
+                $previousMonthTotal += $price;
             }
         }
 
+        $variationPercent = 0;
+        if ($previousMonthTotal > 0) {
+            $variationPercent = (int) round((($currentMonthTotal - $previousMonthTotal) / $previousMonthTotal) * 100);
+        } elseif ($currentMonthTotal > 0) {
+            $variationPercent = 100;
+        }
+
         return $this->json([
-            'total' => round($total, 2),
-            'variationPercent' => 12,
-            'ticketsCount' => count($tickets),
+            'total' => round($currentMonthTotal, 2),
+            'variationPercent' => $variationPercent,
+            'ticketsCount' => $ticketsThisMonth,
             'categoriesCount' => count(array_unique($categories)),
         ]);
     }
@@ -166,37 +193,47 @@ final class TicketController extends AbstractController
         Request $request,
         EntityManagerInterface $em
     ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
+        try {
+            $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['nombre'], $data['precio'])) {
-            return $this->json(['error' => 'Faltan campos obligatorios'], 400);
+            if (!is_array($data)) {
+                return $this->json(['error' => 'JSON no válido'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $validated = self::validateTicketPayload($data);
+
+            if ($validated['error'] !== null) {
+                return $this->json(['error' => $validated['error']], Response::HTTP_BAD_REQUEST);
+            }
+
+            /** @var \App\Entity\User $user */
+            $user = $this->getUser();
+
+            if (!$user) {
+                return $this->json(['error' => 'Usuario no autenticado'], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $precio = $validated['precio'];
+            $productos = $this->normalizeProductos($validated['productos'], $precio);
+
+            $ticket = new Ticket();
+            $ticket->setNombre((string) $validated['nombre']);
+            $ticket->setPrecio($precio);
+            $ticket->setCategoria($validated['categoria']);
+            $ticket->setFecha($validated['fecha'] !== null ? \DateTime::createFromInterface($validated['fecha']) : new \DateTime());
+            $ticket->setProductos($productos);
+            $ticket->setUser($user);
+
+            $em->persist($ticket);
+            $em->flush();
+
+            return $this->json([
+                'message' => 'Ticket creado correctamente',
+                'ticket' => $this->ticketToArray($ticket),
+            ], Response::HTTP_CREATED);
+        } catch (Throwable) {
+            return $this->json(['error' => 'No se pudo crear el ticket'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        /** @var \App\Entity\User $user */
-        $user = $this->getUser();
-
-        if (!$user) {
-            return $this->json(['error' => 'Usuario no autenticado'], 401);
-        }
-
-        $precio = (float) $data['precio'];
-        $productos = $this->normalizeProductos($data['productos'] ?? [], $precio);
-
-        $ticket = new Ticket();
-        $ticket->setNombre((string) $data['nombre']);
-        $ticket->setPrecio($precio);
-        $ticket->setCategoria($data['categoria'] ?? null);
-        $ticket->setFecha(new \DateTime());
-        $ticket->setProductos($productos);
-        $ticket->setUser($user);
-
-        $em->persist($ticket);
-        $em->flush();
-
-        return $this->json([
-            'message' => 'Ticket creado correctamente',
-            'ticket' => $this->ticketToArray($ticket),
-        ], 201);
     }
 
     #[Route('/api/tickets/{id}', methods: ['PUT'], requirements: ['id' => '\d+'])]
@@ -241,24 +278,37 @@ final class TicketController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['nombre'], $data['precio'])) {
-            return $this->json(['error' => 'Faltan campos obligatorios'], Response::HTTP_BAD_REQUEST);
+        if (!is_array($data)) {
+            return $this->json(['error' => 'JSON no válido'], Response::HTTP_BAD_REQUEST);
         }
 
-        $precio = (float) $data['precio'];
-        $productos = $this->normalizeProductos($data['productos'] ?? [], $precio);
+        try {
+            $validated = self::validateTicketPayload($data);
 
-        $ticket->setNombre((string) $data['nombre']);
-        $ticket->setPrecio($precio);
-        $ticket->setCategoria($data['categoria'] ?? null);
-        $ticket->setProductos($productos);
+            if ($validated['error'] !== null) {
+                return $this->json(['error' => $validated['error']], Response::HTTP_BAD_REQUEST);
+            }
 
-        $em->flush();
+            $precio = $validated['precio'];
+            $productos = $this->normalizeProductos($validated['productos'], $precio);
 
-        return $this->json([
-            'message' => 'Ticket actualizado correctamente',
-            'ticket' => $this->ticketToArray($ticket),
-        ]);
+            $ticket->setNombre((string) $validated['nombre']);
+            $ticket->setPrecio($precio);
+            $ticket->setCategoria($validated['categoria']);
+            if ($validated['fecha'] !== null) {
+                $ticket->setFecha(\DateTime::createFromInterface($validated['fecha']));
+            }
+            $ticket->setProductos($productos);
+
+            $em->flush();
+
+            return $this->json([
+                'message' => 'Ticket actualizado correctamente',
+                'ticket' => $this->ticketToArray($ticket),
+            ]);
+        } catch (Throwable) {
+            return $this->json(['error' => 'No se pudo actualizar el ticket'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     #[Route('/api/tickets/{id}', methods: ['DELETE'], requirements: ['id' => '\d+'])]
@@ -383,5 +433,142 @@ final class TicketController extends AbstractController
         }
 
         return $formatted;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array{error: ?string, nombre: ?string, precio: ?float, categoria: ?string, productos: array<int, array{nombre: string, precio: ?float}>, fecha: ?\DateTimeInterface}
+     */
+    private static function validateTicketPayload(array $data, bool $requireAll = true): array
+    {
+        $nombre = isset($data['nombre']) ? trim((string) $data['nombre']) : '';
+        $precioRaw = $data['precio'] ?? null;
+        $categoria = isset($data['categoria']) ? trim((string) $data['categoria']) : null;
+        $productos = is_array($data['productos'] ?? null) ? $data['productos'] : [];
+        $fechaRaw = isset($data['fecha']) ? trim((string) $data['fecha']) : '';
+
+        if ($requireAll && $nombre === '') {
+            return self::ticketValidationError('El nombre de la tienda es obligatorio');
+        }
+
+        if ($requireAll && ($precioRaw === null || $precioRaw === '')) {
+            return self::ticketValidationError('El precio es obligatorio');
+        }
+
+        if ($precioRaw !== null && $precioRaw !== '' && !is_numeric($precioRaw)) {
+            return self::ticketValidationError('El precio debe ser un número válido');
+        }
+
+        $precio = ($precioRaw === null || $precioRaw === '') ? null : (float) $precioRaw;
+
+        if ($precio !== null && $precio <= 0) {
+            return self::ticketValidationError('El precio debe ser mayor que 0');
+        }
+
+        if ($precio !== null && $precio > 999999.99) {
+            return self::ticketValidationError('El precio es demasiado alto');
+        }
+
+        if ($nombre !== '' && strlen($nombre) > 120) {
+            return self::ticketValidationError('El nombre de la tienda es demasiado largo');
+        }
+
+        if ($categoria !== null && $categoria !== '' && strlen($categoria) > 80) {
+            return self::ticketValidationError('La categoría es demasiado larga');
+        }
+
+        $fecha = null;
+        if ($fechaRaw !== '') {
+            $fecha = self::parseTicketDate($fechaRaw);
+            if ($fecha === null) {
+                return self::ticketValidationError('Formato de fecha no válido. Usa dd/mm/aaaa');
+            }
+        }
+
+        $normalizedProducts = [];
+        foreach ($productos as $producto) {
+            if (!is_array($producto)) {
+                continue;
+            }
+
+            $productName = trim((string) ($producto['nombre'] ?? ''));
+            if ($productName === '') {
+                continue;
+            }
+
+            if (strlen($productName) > 120) {
+                return self::ticketValidationError('El nombre de un producto es demasiado largo');
+            }
+
+            $productPriceRaw = $producto['precio'] ?? null;
+            $productPrice = null;
+
+            if ($productPriceRaw !== null && $productPriceRaw !== '') {
+                if (!is_numeric($productPriceRaw)) {
+                    return self::ticketValidationError('El precio de un producto debe ser numérico');
+                }
+
+                $productPrice = (float) $productPriceRaw;
+
+                if ($productPrice < 0) {
+                    return self::ticketValidationError('El precio de un producto no puede ser negativo');
+                }
+
+                if ($productPrice <= 0) {
+                    return self::ticketValidationError('El precio de un producto debe ser mayor que 0');
+                }
+            }
+
+            $normalizedProducts[] = [
+                'nombre' => $productName,
+                'precio' => $productPrice,
+            ];
+        }
+
+        return [
+            'error' => null,
+            'nombre' => $nombre !== '' ? $nombre : null,
+            'precio' => $precio,
+            'categoria' => ($categoria === null || $categoria === '') ? null : $categoria,
+            'productos' => $normalizedProducts,
+            'fecha' => $fecha,
+        ];
+    }
+
+    private static function parseTicketDate(string $value): ?\DateTimeImmutable
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        $formats = ['d/m/Y', 'd-m-Y', 'Y-m-d', 'Y-m-d H:i:s', 'd/m/Y H:i:s'];
+
+        foreach ($formats as $format) {
+            $date = \DateTimeImmutable::createFromFormat($format, $value);
+            if ($date instanceof \DateTimeImmutable) {
+                $errors = \DateTimeImmutable::getLastErrors();
+                if (($errors['warning_count'] ?? 0) === 0 && ($errors['error_count'] ?? 0) === 0) {
+                    return $date;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{error: ?string, nombre: ?string, precio: ?float, categoria: ?string, productos: array<int, array{nombre: string, precio: ?float}>, fecha: ?\DateTimeInterface}
+     */
+    private static function ticketValidationError(string $message): array
+    {
+        return [
+            'error' => $message,
+            'nombre' => null,
+            'precio' => null,
+            'categoria' => null,
+            'productos' => [],
+            'fecha' => null,
+        ];
     }
 }

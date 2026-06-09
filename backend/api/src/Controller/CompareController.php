@@ -188,8 +188,25 @@ final class CompareController extends AbstractController
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['productName'], $data['store'], $data['price'])) {
+        if (!is_array($data) || !isset($data['productName'], $data['store'], $data['price'])) {
             return $this->json(['error' => 'Faltan campos obligatorios'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $productName = trim((string) $data['productName']);
+        $store = trim((string) $data['store']);
+
+        if ($productName === '' || $store === '') {
+            return $this->json(['error' => 'Producto y tienda son obligatorios'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (!is_numeric($data['price'])) {
+            return $this->json(['error' => 'El precio debe ser numérico'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $price = (float) $data['price'];
+
+        if ($price <= 0) {
+            return $this->json(['error' => 'El precio debe ser mayor que 0'], Response::HTTP_BAD_REQUEST);
         }
 
         /** @var \App\Entity\User $user */
@@ -197,9 +214,9 @@ final class CompareController extends AbstractController
 
         $entry = new ProductPriceEntry();
         $entry->setUser($user);
-        $entry->setProductName(trim((string) $data['productName']));
-        $entry->setStore(trim((string) $data['store']));
-        $entry->setPrice((float) $data['price']);
+        $entry->setProductName($productName);
+        $entry->setStore($store);
+        $entry->setPrice($price);
 
         $em->persist($entry);
         $em->flush();

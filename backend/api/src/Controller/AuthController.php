@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Throwable;
 
 #[OA\Tag(name: 'Auth', description: 'Registro y autenticación')]
 class AuthController extends AbstractController
@@ -39,43 +40,81 @@ class AuthController extends AbstractController
         UserRepository $userRepository
     ): JsonResponse {
 
-        $data = json_decode($request->getContent(), true);
-
-        if (!isset($data['email'], $data['password'])) {
-            return $this->json([
-                'error' => 'Email y password requeridos'
-            ], 400);
-        }
-
-        $email = trim((string) $data['email']);
-
-        if ($userRepository->findOneBy(['email' => $email])) {
-            return $this->json(['error' => 'El email ya está registrado'], Response::HTTP_CONFLICT);
-        }
-
-        $user = new User();
-
-        $user->setEmail($email);
-
-        $hashedPassword = $passwordHasher->hashPassword(
-            $user,
-            (string) $data['password']
-        );
-
-        $user->setPassword($hashedPassword);
-
-        $user->setRoles(['ROLE_USER']);
-
-        $em->persist($user);
-
         try {
+            $data = json_decode($request->getContent(), true);
+
+            if (!is_array($data) || !isset($data['email'], $data['password'])) {
+                return $this->json([
+                    'error' => 'Email y password requeridos'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            $email = trim((string) $data['email']);
+            $password = (string) $data['password'];
+
+            if ($error = self::validateRegisterEmail($email)) {
+                return $this->json(['error' => $error], Response::HTTP_BAD_REQUEST);
+            }
+
+            if ($error = self::validateRegisterPassword($password)) {
+                return $this->json(['error' => $error], Response::HTTP_BAD_REQUEST);
+            }
+
+            if ($userRepository->findOneBy(['email' => $email])) {
+                return $this->json(['error' => 'El email ya está registrado'], Response::HTTP_CONFLICT);
+            }
+
+            $user = new User();
+            $user->setEmail($email);
+            $user->setPassword($passwordHasher->hashPassword($user, $password));
+            $user->setRoles(['ROLE_USER']);
+
+            $em->persist($user);
             $em->flush();
+
+            return $this->json([
+                'message' => 'Usuario registrado correctamente'
+            ], Response::HTTP_CREATED);
         } catch (UniqueConstraintViolationException) {
             return $this->json(['error' => 'El email ya está registrado'], Response::HTTP_CONFLICT);
+        } catch (Throwable $e) {
+            return $this->json([
+                'error' => 'No se pudo registrar el usuario',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private static function validateRegisterEmail(string $email): ?string
+    {
+        if ($email === '') {
+            return 'El email es obligatorio';
         }
 
-        return $this->json([
-            'message' => 'Usuario registrado correctamente'
-        ], 201);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return 'Formato de email no válido';
+        }
+
+        if (strlen($email) > 180) {
+            return 'El email es demasiado largo';
+        }
+
+        return null;
+    }
+
+    private static function validateRegisterPassword(string $password): ?string
+    {
+        if ($password === '') {
+            return 'La contraseña es obligatoria';
+        }
+
+        if (strlen($password) < 6) {
+            return 'La contraseña debe tener al menos 6 caracteres';
+        }
+
+        if (strlen($password) > 128) {
+            return 'La contraseña es demasiado larga';
+        }
+
+        return null;
     }
 }
