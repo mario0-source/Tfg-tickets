@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.File
@@ -30,11 +31,29 @@ object TicketOcrHelper {
             val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
-                    onSuccess(ReceiptOcrParser.parse(visionText.text))
+                    val orderedLines = extractOrderedLines(visionText)
+                    onSuccess(ReceiptOcrParser.parseFromLines(orderedLines))
                 }
                 .addOnFailureListener { onFailure?.invoke() }
         } catch (_: Exception) {
             onFailure?.invoke()
         }
+    }
+
+    /**
+     * Ordena las líneas de arriba a abajo (como en el ticket), no en el orden aleatorio del OCR.
+     */
+    private fun extractOrderedLines(visionText: Text): List<String> {
+        return visionText.textBlocks
+            .flatMap { block ->
+                block.lines.map { line ->
+                    val box = line.boundingBox
+                    Triple(box?.top ?: 0, box?.left ?: 0, line.text.trim())
+                }
+            }
+            .sortedWith(compareBy({ it.first }, { it.second }))
+            .map { it.third }
+            .map { it.replace(Regex("""\s+"""), " ").trim() }
+            .filter { it.isNotBlank() }
     }
 }

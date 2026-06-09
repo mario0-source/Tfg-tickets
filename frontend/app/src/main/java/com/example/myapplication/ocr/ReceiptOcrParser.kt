@@ -25,7 +25,8 @@ object ReceiptOcrParser {
         "nif", "cif", "telefono", "teléfono", "telf", "domicilio", "direccion", "dirección",
         "horario", "apertura", "cierre", "articulos", "artículos", "descuento", "entrega",
         "devolucion", "devolución", "atencion", "atención", "atendio", "atendió",
-        "datos fiscales", "regimen", "régimen", "equivalencia", "copia", "unidades", "pvp"
+        "datos fiscales", "regimen", "régimen", "equivalencia", "copia", "unidades", "pvp",
+        "ticket", "tique", "nº ticket", "num ticket", "forma de pago", "redsys", "bizum"
     )
 
     private val METADATA_NAME_KEYWORDS = setOf(
@@ -42,14 +43,29 @@ object ReceiptOcrParser {
     )
 
     private val TOTAL_INLINE_REGEX = Regex(
-        """(?:^|\b)(?:total|importe|suma|a\s+pagar|pagado)\b[^0-9]{0,20}(\d+[.,]\d{1,2})""",
+        """(?:^|\b)(?:total|importe|suma|a\s+pagar|pagado)\b[^0-9]{0,24}(\d+[.,]\d{1,2})""",
         RegexOption.IGNORE_CASE
     )
 
     private val LEADING_QTY = Regex("""^(\d+)\s*(?:[xX×]\s*|\s+)""")
 
     private val TRAILING_PRICE = Regex(
-        """(?:€|eur\s*)?(\d+[.,]\d{1,2})\s*(?:€|eur)?$""",
+        """(?:€|eur\s*)?(\d+[.,]\d{1,2})\s*(?:€|eur)?\s*$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val PRICE_ONLY_LINE = Regex(
+        """^\s*(?:€|eur\s*)?(\d+[.,]\d{1,2})\s*(?:€|eur)?\s*$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val SPACED_PRODUCT_PRICE = Regex(
+        """^(.{2,55}?)\s{2,}(\d{1,4}[.,]\d{2})\s*(?:€|eur|a|u\.)?\s*$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val QTY_TIMES_PRICE = Regex(
+        """^(.+?)\s+(\d{1,3})\s*[xX×]\s*(\d+[.,]\d{2})\s*(?:€|eur)?\s*$""",
         RegexOption.IGNORE_CASE
     )
 
@@ -72,7 +88,8 @@ object ReceiptOcrParser {
         "leche", "pan", "arroz", "pasta", "carne", "pollo", "pescado", "fruta", "verdura",
         "yogur", "yogurt", "queso", "huevo", "huevos", "aceite", "azucar", "azúcar", "sal",
         "jamón", "jamon", "embutido", "cereal", "galleta", "chocolate", "mantequilla",
-        "tomate", "patata", "cebolla", "plátano", "platano", "manzana", "naranja", "atun", "atún"
+        "tomate", "patata", "cebolla", "plátano", "platano", "manzana", "naranja", "atun", "atún",
+        "agua", "refresco", "coca", "cerveza", "vino", "zumo", "cafe", "café"
     )
 
     private val DRINK_KEYWORDS = setOf(
@@ -89,14 +106,16 @@ object ReceiptOcrParser {
         "usb", "cable", "pila", "pilas", "bateria", "batería", "auricular", "cargador", "memoria"
     )
 
-    fun parse(text: String): ParsedReceipt {
-        val lines = normalizeLines(text)
-        val rawProducts = extractProducts(lines)
-        var total = extractTotal(text, lines, rawProducts.map { it.price })
+    fun parse(text: String): ParsedReceipt = parseFromLines(normalizeLines(text))
+
+    fun parseFromLines(lines: List<String>): ParsedReceipt {
+        val mergedLines = mergeFragmentedLines(lines)
+        val rawProducts = extractProducts(mergedLines)
+        var total = extractTotal(mergedLines.joinToString("\n"), mergedLines, rawProducts.map { it.price })
         var products = applySingleProductTotalRule(rawProducts, total)
 
         if (products.isEmpty() && total == null) {
-            total = extractTotalFromBottom(lines, emptyList())
+            total = extractTotalFromBottom(mergedLines, emptyList())
         }
 
         if (products.isEmpty() && total != null) {
@@ -112,9 +131,9 @@ object ReceiptOcrParser {
         }
 
         return ParsedReceipt(
-            nombre = extractStoreName(lines),
+            nombre = extractStoreName(mergedLines),
             precio = total?.let { "%.2f".format(it) } ?: "",
-            fecha = extractDate(text, lines),
+            fecha = extractDate(mergedLines.joinToString("\n"), mergedLines),
             categoria = inferCategoryFromProducts(productDtos),
             productos = productDtos
         )
@@ -122,44 +141,109 @@ object ReceiptOcrParser {
 
     private fun normalizeLines(text: String): List<String> {
         return text.lines()
-            .map { it.trim() }
+            .map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.isNotBlank() }
+    }
+
+    /**
+     * OCR suele partir el nombre en una línea y el precio en la siguiente.
+     */
+    private fun mergeFragmentedLines(lines: List<String>): List<String> {
+        val result = mutableListOf<String>()
+        var index = 0
+
+        while (index < lines.size) {
+            val current = lines[index]
+            if (index + 1 < lines.size) {
+                val next = lines[index + 1]
+                if (isLikelyProductNameLine(current) && isPriceOnlyLine(next)) {
+                    result.add("$current $next")
+                    index += 2
+                    continue
+                }
+                if (isLikelyProductNameLine(current) && findTrailingPrice(current) == null) {
+                    val combined = "$current $next"
+                    if (findTrailingPrice(combined) != null && !isMetadataLine(next)) {
+                        result.add(combined)
+                        index += 2
+                        continue
+                    }
+                }
+            }
+            result.add(current)
+            index++
+        }
+
+        return result
     }
 
     private fun extractProducts(lines: List<String>): List<ParsedProduct> {
         val seen = mutableSetOf<String>()
+        val products = mutableListOf<ParsedProduct>()
 
-        return lines.mapNotNull { line ->
-            if (isMetadataLine(line)) return@mapNotNull null
-
-            val withoutQty = LEADING_QTY.replace(line, "").trim()
-            val priceMatch = findTrailingPrice(withoutQty) ?: return@mapNotNull null
-            val price = parsePrice(priceMatch) ?: return@mapNotNull null
-
-            val rawName = withoutQty
-                .substring(0, priceMatch.range.first)
-                .replace(Regex("""\s+"""), " ")
-                .trim()
-                .trimEnd('-', '.', ':', '*', '€')
-
-            if (!isValidProductLine(rawName, price, line)) return@mapNotNull null
-
-            val key = rawName.lowercase()
-            if (key in seen) return@mapNotNull null
-            seen.add(key)
-
-            ParsedProduct(name = rawName, price = price)
+        lines.forEach { line ->
+            parseProductFromLine(line)?.let { product ->
+                val key = "${product.name.lowercase()}|${"%.2f".format(product.price)}"
+                if (key !in seen) {
+                    seen.add(key)
+                    products.add(product)
+                }
+            }
         }
+
+        return products
+    }
+
+    private fun parseProductFromLine(line: String): ParsedProduct? {
+        if (isMetadataLine(line)) return null
+
+        QTY_TIMES_PRICE.matchEntire(line.trim())?.let { match ->
+            val name = match.groupValues[1].trim()
+            val price = parsePriceString(match.groupValues[3]) ?: return null
+            if (isValidProductLine(name, price, line)) {
+                return ParsedProduct(name = name, price = price)
+            }
+        }
+
+        SPACED_PRODUCT_PRICE.matchEntire(line.trim())?.let { match ->
+            val name = match.groupValues[1].trim()
+            val price = parsePriceString(match.groupValues[2]) ?: return null
+            if (isValidProductLine(name, price, line)) {
+                return ParsedProduct(name = name, price = price)
+            }
+        }
+
+        val withoutQty = LEADING_QTY.replace(line, "").trim()
+        val priceMatch = findTrailingPrice(withoutQty) ?: return null
+        val price = parsePrice(priceMatch) ?: return null
+
+        val rawName = withoutQty
+            .substring(0, priceMatch.range.first)
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+            .trimEnd('-', '.', ':', '*', '€', 'a', 'u')
+
+        if (!isValidProductLine(rawName, price, line)) return null
+
+        return ParsedProduct(name = rawName, price = price)
+    }
+
+    private fun isPriceOnlyLine(line: String): Boolean = PRICE_ONLY_LINE.matches(line.trim())
+
+    private fun isLikelyProductNameLine(line: String): Boolean {
+        if (isMetadataLine(line)) return false
+        if (findTrailingPrice(line) != null) return false
+        if (isPriceOnlyLine(line)) return false
+        return line.count { it.isLetter() } >= 2
     }
 
     private fun findTrailingPrice(line: String): MatchResult? {
         return TRAILING_PRICE.find(line)
             ?: TRAILING_PRICE.find(line.replace(" ", ""))
+            ?: TRAILING_PRICE.find(line.replace("O", "0").replace("o", "0"))
     }
 
-    private fun parsePrice(match: MatchResult): Double? {
-        return parsePriceString(match.groupValues[1])
-    }
+    private fun parsePrice(match: MatchResult): Double? = parsePriceString(match.groupValues[1])
 
     private fun parsePriceString(raw: String): Double? {
         return raw.replace(",", ".")
@@ -212,6 +296,8 @@ object ReceiptOcrParser {
 
         val words = lowerName.split(Regex("""\s+"""))
         if (words.all { it.matches(Regex("""\d+""")) }) return false
+
+        if (originalLine.count { it.isDigit() } > 0 && name.count { it.isLetter() } < 3) return false
 
         return true
     }
@@ -310,7 +396,7 @@ object ReceiptOcrParser {
     private fun extractTotalFromBottom(lines: List<String>, productPrices: List<Double>): Double? {
         val productPriceSet = productPrices.toSet()
 
-        val candidates = lines.takeLast(12).mapNotNull { line ->
+        val candidates = lines.takeLast(14).mapNotNull { line ->
             val lower = line.lowercase()
             if (isMetadataLine(line) && !TOTAL_LABEL_REGEX.containsMatchIn(lower)) {
                 return@mapNotNull null

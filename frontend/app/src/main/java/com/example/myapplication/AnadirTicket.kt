@@ -32,6 +32,12 @@ import com.example.myapplication.ocr.TicketOcrHelper
 import com.example.myapplication.util.TicketProductHelper
 import com.example.myapplication.util.TicketTotalValidator
 import com.example.myapplication.util.TicketValidationState
+import androidx.compose.material3.MaterialTheme
+import com.example.myapplication.ui.components.ValidatedOutlinedField
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
+import com.example.myapplication.util.ApiErrorParser
+import com.example.myapplication.util.FormValidators
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
@@ -40,7 +46,7 @@ import retrofit2.Response
 @Composable
 fun AddTicketScreen(navController: NavHostController) {
 
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -51,22 +57,44 @@ fun AddTicketScreen(navController: NavHostController) {
     var fecha by remember { mutableStateOf("") }
     var categoria by remember { mutableStateOf("") }
     var productos by remember { mutableStateOf(listOf(ProductDto("", null))) }
+    var submitAttempted by remember { mutableStateOf(false) }
 
     val singleProductMode = productos.size == 1
     val totalValue = precio.replace(",", ".").toDoubleOrNull() ?: 0.0
+
+    val nombreError = remember(nombre, submitAttempted) {
+        if (!submitAttempted && nombre.isBlank()) null else FormValidators.validateRequired(nombre, "La tienda")
+    }
+    val precioError = remember(precio, submitAttempted) {
+        if (!submitAttempted && precio.isBlank()) null else FormValidators.validatePrice(precio)
+    }
+    val fechaError = remember(fecha, submitAttempted) {
+        FormValidators.validateDate(fecha, required = false)
+    }
+    val productErrors = remember(productos, singleProductMode, submitAttempted) {
+        if (!submitAttempted) emptyMap() else FormValidators.validateProductPrices(productos, singleProductMode)
+    }
+    val productsMissingError = remember(productos, submitAttempted) {
+        if (submitAttempted && !FormValidators.hasAnyProductName(productos)) {
+            "Añade al menos un producto"
+        } else null
+    }
 
     val validationState = remember(totalValue, productos, singleProductMode) {
         TicketTotalValidator.validate(totalValue, productos, singleProductMode)
     }
 
-    val canSave = remember(validationState, totalValue, productos, singleProductMode) {
-        when {
-            nombre.isBlank() || totalValue <= 0 -> false
-            productos.none { it.nombre.isNotBlank() } -> false
-            singleProductMode -> true
-            validationState is TicketValidationState.Valid -> true
-            else -> false
-        }
+    val canSave = remember(
+        nombreError, precioError, fechaError, productErrors, productsMissingError,
+        validationState, productos, singleProductMode
+    ) {
+        nombreError == null &&
+                precioError == null &&
+                fechaError == null &&
+                productErrors.isEmpty() &&
+                productsMissingError == null &&
+                FormValidators.hasAnyProductName(productos) &&
+                (singleProductMode || validationState is TicketValidationState.Valid)
     }
 
     fun applyParsedReceipt(parsed: ParsedReceipt) {
@@ -80,17 +108,27 @@ fun AddTicketScreen(navController: NavHostController) {
             listOf(ProductDto("", null))
         }
 
-        if (parsed.precio.isBlank() && !parsed.hasValidProducts) {
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    "OCR: no se detectó total ni productos. Complétalo manualmente."
-                )
+        when {
+            parsed.precio.isBlank() && !parsed.hasValidProducts -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        "OCR: no se detectó total ni productos. Complétalo manualmente."
+                    )
+                }
             }
-        } else if (!parsed.hasValidProducts) {
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    "OCR: total detectado. Revisa los productos."
-                )
+            parsed.hasValidProducts -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        "OCR: ${parsed.productos.size} producto(s) detectado(s). Revisa nombre y precios."
+                    )
+                }
+            }
+            else -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        "OCR: total detectado. Añade los productos a mano si faltan."
+                    )
+                }
             }
         }
     }
@@ -129,17 +167,7 @@ fun AddTicketScreen(navController: NavHostController) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            listOf(Color(0xFF0A0A0F), Color(0xFF0D1B2A), Color(0xFF003C3C))
-                        )
-                    )
-            )
-
+        NebulaScreenBackground(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .padding(padding)
@@ -148,20 +176,28 @@ fun AddTicketScreen(navController: NavHostController) {
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text("Añadir Ticket", color = Color.White, fontSize = 24.sp)
+                Text("Añadir Ticket", color = Color.White, style = MaterialTheme.typography.headlineMedium)
 
                 ticketFields(
                     precio = precio,
                     onPrecioChange = { precio = it },
+                    precioError = precioError,
                     nombre = nombre,
                     onNombreChange = { nombre = it },
+                    nombreError = nombreError,
                     fecha = fecha,
                     onFechaChange = { fecha = it },
+                    fechaError = fechaError,
                     categoria = categoria,
-                    onCategoriaChange = { categoria = it }
+                    onCategoriaChange = { categoria = it },
+                    fechaPlaceholder = "dd/mm/aaaa (opcional)"
                 )
 
                 Text("Productos", color = Color.White)
+
+                if (productsMissingError != null) {
+                    Text(productsMissingError!!, color = Color(0xFFFF8080), style = MaterialTheme.typography.bodySmall)
+                }
 
                 if (singleProductMode) {
                     Text(
@@ -174,7 +210,8 @@ fun AddTicketScreen(navController: NavHostController) {
                 productListFields(
                     productos = productos,
                     onProductosChange = { productos = it },
-                    singleProductMode = singleProductMode
+                    singleProductMode = singleProductMode,
+                    productErrors = productErrors
                 )
 
                 ValidationBanner(
@@ -218,11 +255,15 @@ fun AddTicketScreen(navController: NavHostController) {
 
                 Button(
                     onClick = {
+                        submitAttempted = true
+                        if (!canSave) return@Button
+
                         val prepared = TicketProductHelper.prepareForSave(productos, totalValue)
                         val request = CreateTicketRequest(
-                            nombre = nombre,
+                            nombre = nombre.trim(),
                             precio = totalValue,
-                            categoria = categoria,
+                            categoria = categoria.trim(),
+                            fecha = FormValidators.parseDate(fecha),
                             productos = prepared
                         )
                         RetrofitClient.api.createTicket(request)
@@ -231,13 +272,23 @@ fun AddTicketScreen(navController: NavHostController) {
                                     call: Call<Map<String, Any>>,
                                     response: Response<Map<String, Any>>
                                 ) {
-                                    if (response.isSuccessful) navController.navigate("home")
+                                    if (response.isSuccessful) {
+                                        navController.navigate("home")
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(ApiErrorParser.message(response))
+                                        }
+                                    }
                                 }
 
-                                override fun onFailure(call: Call<Map<String, Any>>, t: Throwable) {}
+                                override fun onFailure(call: Call<Map<String, Any>>, t: Throwable) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Error de conexión")
+                                    }
+                                }
                             })
                     },
-                    enabled = canSave,
+                    enabled = canSave || !submitAttempted,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = primaryGreen,
@@ -257,40 +308,47 @@ fun AddTicketScreen(navController: NavHostController) {
 fun ticketFields(
     precio: String,
     onPrecioChange: (String) -> Unit,
+    precioError: String? = null,
     nombre: String,
     onNombreChange: (String) -> Unit,
+    nombreError: String? = null,
     fecha: String,
     onFechaChange: (String) -> Unit,
+    fechaError: String? = null,
     categoria: String,
-    onCategoriaChange: (String) -> Unit
+    onCategoriaChange: (String) -> Unit,
+    showFecha: Boolean = true,
+    fechaPlaceholder: String = "dd/mm/aaaa"
 ) {
-    OutlinedTextField(
+    ValidatedOutlinedField(
         value = precio,
         onValueChange = onPrecioChange,
-        label = { Text("Precio total") },
-        modifier = Modifier.fillMaxWidth(),
-        colors = outlinedFieldColors()
+        label = "Precio total",
+        error = precioError,
+        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
     )
-    OutlinedTextField(
+    Spacer(Modifier.height(8.dp))
+    ValidatedOutlinedField(
         value = nombre,
         onValueChange = onNombreChange,
-        label = { Text("Tienda") },
-        modifier = Modifier.fillMaxWidth(),
-        colors = outlinedFieldColors()
+        label = "Tienda",
+        error = nombreError
     )
-    OutlinedTextField(
-        value = fecha,
-        onValueChange = onFechaChange,
-        label = { Text("Fecha") },
-        modifier = Modifier.fillMaxWidth(),
-        colors = outlinedFieldColors()
-    )
-    OutlinedTextField(
+    if (showFecha) {
+        Spacer(Modifier.height(8.dp))
+        ValidatedOutlinedField(
+            value = fecha,
+            onValueChange = onFechaChange,
+            label = "Fecha",
+            error = fechaError,
+            placeholder = fechaPlaceholder
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    ValidatedOutlinedField(
         value = categoria,
         onValueChange = onCategoriaChange,
-        label = { Text("Categoría") },
-        modifier = Modifier.fillMaxWidth(),
-        colors = outlinedFieldColors()
+        label = "Categoría"
     )
 }
 
@@ -298,31 +356,31 @@ fun ticketFields(
 fun productListFields(
     productos: List<ProductDto>,
     onProductosChange: (List<ProductDto>) -> Unit,
-    singleProductMode: Boolean
+    singleProductMode: Boolean,
+    productErrors: Map<Int, String> = emptyMap()
 ) {
     productos.forEachIndexed { index, item ->
         if (singleProductMode) {
-            OutlinedTextField(
+            ValidatedOutlinedField(
                 value = item.nombre,
                 onValueChange = { newValue ->
                     onProductosChange(productos.toMutableList().also { it[index] = it[index].copy(nombre = newValue) })
                 },
-                label = { Text("Producto") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = outlinedFieldColors()
+                label = "Producto",
+                error = productErrors[index]
             )
+            Spacer(Modifier.height(8.dp))
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                ValidatedOutlinedField(
                     value = item.nombre,
                     onValueChange = { newValue ->
                         onProductosChange(productos.toMutableList().also { it[index] = it[index].copy(nombre = newValue) })
                     },
-                    label = { Text("Producto ${index + 1}") },
-                    modifier = Modifier.weight(1f),
-                    colors = outlinedFieldColors()
+                    label = "Producto ${index + 1}",
+                    modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
+                ValidatedOutlinedField(
                     value = item.precio?.toString()?.takeIf { it != "0.0" } ?: "",
                     onValueChange = { newValue ->
                         onProductosChange(
@@ -331,11 +389,13 @@ fun productListFields(
                             }
                         )
                     },
-                    label = { Text("Precio") },
-                    modifier = Modifier.width(100.dp),
-                    colors = outlinedFieldColors()
+                    label = "Precio",
+                    error = productErrors[index],
+                    modifier = Modifier.width(120.dp),
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                 )
             }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
