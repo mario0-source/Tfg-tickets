@@ -35,4 +35,15 @@ class TicketDetailViewModel : ViewModel() {
             }
         }
     }
+
+    fun deleteTicket(ticketId: Int, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.deleteTicket(ticketId)
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e.message ?: "Error al eliminar el ticket")
+            }
+        }
+    }
 }

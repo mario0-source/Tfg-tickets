@@ -35,7 +35,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.auth.SessionManager
+import com.example.myapplication.ui.components.NebulaLoginPasswordField
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
+import com.example.myapplication.ui.theme.NebulaTextMuted
+import com.example.myapplication.ui.theme.NebulaTextSecondary
+import com.example.myapplication.util.ApiErrorParser
+import com.example.myapplication.util.FormValidators
 
 
 class MainActivity : ComponentActivity() {
@@ -57,26 +64,21 @@ fun DigitalNebulaLoginScreen(
     onNavigateToRegister: () -> Unit
 ){
 
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val context = LocalContext.current
     var errorMessage by remember { mutableStateOf("") }
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.imagen_login),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var submitAttempted by remember { mutableStateOf(false) }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.25f))
-        )
+    val emailError = remember(email, submitAttempted) {
+        if (!submitAttempted && email.isBlank()) null else FormValidators.validateEmail(email)
+    }
+    val passwordError = remember(password, submitAttempted) {
+        if (!submitAttempted && password.isBlank()) null else FormValidators.validatePassword(password)
+    }
 
+    NebulaScreenBackground(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -107,14 +109,13 @@ fun DigitalNebulaLoginScreen(
                 Text(
                     text = "Digital Nebula",
                     color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineMedium
                 )
 
                 Text(
                     text = "¡Bienvenido de nuevo!",
-                    color = Color(0xFFCCCCCC),
-                    fontSize = 16.sp
+                    color = NebulaTextMuted,
+                    style = MaterialTheme.typography.bodyLarge
                 )
             }
 
@@ -123,29 +124,31 @@ fun DigitalNebulaLoginScreen(
                 // Email
                 Text(
                     text = "CORREO ELECTRÓNICO",
-                    color = Color(0xFFB0B0C0),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    color = NebulaTextSecondary,
+                    style = MaterialTheme.typography.labelMedium
                 )
-
-                var email by remember { mutableStateOf("") }
 
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
                     placeholder = { Text("nombre@nebula.io", color = Color(0xFF9A9A9A)) },
                     singleLine = true,
+                    isError = emailError != null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryGreen,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                        errorBorderColor = Color(0xFFFF8080),
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         cursorColor = primaryGreen
                     )
                 )
+                emailError?.let {
+                    Text(it, color = Color(0xFFFF8080), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -155,45 +158,41 @@ fun DigitalNebulaLoginScreen(
                 ) {
                     Text(
                         text = "CONTRASEÑA",
-                        color = Color(0xFFB0B0C0),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
+                        color = NebulaTextSecondary,
+                        style = MaterialTheme.typography.labelMedium
                     )
                     Text(
                         text = "¿OLVIDASTE?",
                         color = primaryGreen,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
 
-                var password by remember { mutableStateOf("") }
-
-                OutlinedTextField(
+                NebulaLoginPasswordField(
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = { Text("••••••••", color = Color(0xFF9A9A9A)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    placeholder = "••••••••",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryGreen,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = primaryGreen
-                    )
+                        .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
                 )
+                passwordError?.let {
+                    Text(it, color = Color(0xFFFF8080), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
                     onClick = {
+                        submitAttempted = true
+                        errorMessage = ""
+
+                        if (emailError != null || passwordError != null) {
+                            return@Button
+                        }
 
                         val request = LoginRequest(
-                            email = email,
+                            email = email.trim(),
                             password = password
                         )
 
@@ -223,8 +222,7 @@ fun DigitalNebulaLoginScreen(
                                         }
 
                                     } else {
-
-                                        errorMessage = "Correo o contraseña incorrectos"
+                                        errorMessage = ApiErrorParser.message(response)
                                     }
                                 }
 
@@ -326,7 +324,3 @@ fun DigitalNebulaLoginScreen(
         }
     }
 }
-
-
-
-

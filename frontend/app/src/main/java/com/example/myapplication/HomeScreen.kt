@@ -1,14 +1,16 @@
 package com.example.myapplication
 
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Receipt
@@ -18,44 +20,44 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.myapplication.auth.SessionManager
+import com.example.myapplication.ui.components.NebulaProfileAvatar
 import com.example.myapplication.ui.home.HomeViewModel
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
+import com.example.myapplication.ui.theme.NebulaTextSecondary
 
 @Composable
 fun HomeDashboardScreen(navController: NavHostController) {
 
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val viewModel: HomeViewModel = viewModel()
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val userEmail = remember { sessionManager.getEmail() }
+    val userName = remember(userEmail) {
+        userEmail?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() } ?: "Usuario"
+    }
 
     val state by viewModel.state.collectAsState()
+    val variationLabel = when {
+        state.variation > 0 -> "+${state.variation.toInt()}%"
+        state.variation < 0 -> "${state.variation.toInt()}%"
+        else -> "0%"
+    }
+    val variationColor = if (state.variation >= 0) primaryGreen else Color(0xFFFF8080)
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
 
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // 🔹 Imagen de fondo
-            Image(
-                painter = painterResource(id = R.drawable.dashborad_fondo),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.25f))
-            )
-
+        NebulaScreenBackground(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
                     .padding(padding)
@@ -72,34 +74,50 @@ fun HomeDashboardScreen(navController: NavHostController) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.clickable { navController.navigate("profile") }
+                        ) {
+                            NebulaProfileAvatar(
+                                email = userEmail,
+                                onClick = { navController.navigate("profile") }
+                            )
+                            Column {
+                                Text(
+                                    text = "Hola, $userName",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Tu espacio Nebula",
+                                    color = NebulaTextSecondary,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+
                         Icon(
-                            painter = painterResource(id = R.drawable.perfil),
+                            imageVector = Icons.Default.Cloud,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = primaryGreen,
                             modifier = Modifier.size(32.dp)
-                        )
-                        Icon(
-                            painter = painterResource(id = R.drawable.imagen_login),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Text("GASTO MENSUAL", color = Color(0xFFB0B0C0), fontSize = 13.sp)
+                    Text("GASTO MENSUAL", color = NebulaTextSecondary, style = MaterialTheme.typography.labelMedium)
 
                     Text(
                         text = "${state.total}€",
                         color = Color.White,
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.displayLarge
                     )
 
                     Text(
-                        text = "+12%",
-                        color = primaryGreen,
+                        text = variationLabel,
+                        color = variationColor,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -111,24 +129,30 @@ fun HomeDashboardScreen(navController: NavHostController) {
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         StatCard(title = "TICKETS", value = state.ticketsCount.toString())
-                        StatCard(title = "CATEGORÍAS", value = "8")
+                        StatCard(title = "CATEGORÍAS", value = state.categoriesCount.toString())
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = { },
+                        onClick = { navController.navigate("add") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryGreen),
                         shape = RoundedCornerShape(16.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Color(0xFF020208),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Añadir Ticket",
                             color = Color(0xFF020208),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
 
@@ -152,13 +176,13 @@ fun HomeDashboardScreen(navController: NavHostController) {
                     )
                 }
 
-                items(state.tickets) { ticket ->
-
+                items(state.tickets.take(5)) { ticket ->
                     TicketItem(
                         name = ticket.nombre,
                         price = "${ticket.precio}€",
                         category = ticket.categoria,
-                        time = ticket.fecha
+                        time = ticket.fecha,
+                        onClick = { navController.navigate("ticketDetail/${ticket.id}") }
                     )
                 }
             }
@@ -198,10 +222,17 @@ fun InfoCard(title: String, subtitle: String) {
 }
 
 @Composable
-fun TicketItem(name: String, price: String, category: String, time: String) {
+fun TicketItem(
+    name: String,
+    price: String,
+    category: String,
+    time: String,
+    onClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

@@ -21,12 +21,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.compose.material3.MaterialTheme
 import com.example.myapplication.ui.tickets.TicketsViewModel
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
 
 @Composable
 fun TicketsScreen(navController: NavHostController) {
 
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
 
     val viewModel: TicketsViewModel = viewModel()
 
@@ -45,23 +48,7 @@ fun TicketsScreen(navController: NavHostController) {
         bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
 
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-
-            Image(
-                painter = painterResource(id = R.drawable.imagen_login),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.25f))
-            )
-
+        NebulaScreenBackground(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
                     .padding(padding)
@@ -78,8 +65,7 @@ fun TicketsScreen(navController: NavHostController) {
                     Text(
                         text = "Tickets Recientes",
                         color = Color.White,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))

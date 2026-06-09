@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Receipt
@@ -32,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.myapplication.ui.tickets.TicketDetailViewModel
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
 import com.example.myapplication.util.TicketPdfExporter
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -43,22 +46,16 @@ fun TicketDetailScreen(
     ticketId: Int,
     viewModel: TicketDetailViewModel = viewModel()
 ) {
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val accentBlue = Color(0xFF1A8CFF)
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(ticketId) { viewModel.loadTicket(ticketId) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF0A0A0F), Color(0xFF0D1B2A), Color(0xFF003C3C))
-                )
-            )
-    ) {
+    NebulaScreenBackground(modifier = Modifier.fillMaxSize()) {
         when {
             state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = primaryGreen)
             state.ticket == null -> {
@@ -216,8 +213,57 @@ fun TicketDetailScreen(
                             }
                         }
                     }
+
+                    item {
+                        Column(Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { showDeleteDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4D4D))
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Eliminar ticket", color = Color.White)
+                            }
+                            deleteError?.let {
+                                Spacer(Modifier.height(8.dp))
+                                Text(it, color = Color(0xFFFF8080), fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Eliminar ticket") },
+                text = { Text("¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            viewModel.deleteTicket(
+                                ticketId = ticketId,
+                                onSuccess = {
+                                    navController.navigate("tickets") {
+                                        popUpTo("home") { inclusive = false }
+                                    }
+                                },
+                                onError = { deleteError = it }
+                            )
+                        }
+                    ) {
+                        Text("Eliminar", color = Color(0xFFFF4D4D))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }

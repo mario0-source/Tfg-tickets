@@ -30,11 +30,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.myapplication.auth.SessionManager
 import com.example.myapplication.network.RetrofitClient
+import androidx.compose.material3.MaterialTheme
 import com.example.myapplication.ui.profile.ProfileViewModel
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
+import com.example.myapplication.ui.theme.NebulaTextSecondary
 
 @Composable
 fun ProfileScreen(navController: NavHostController) {
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
     val viewModel: ProfileViewModel = viewModel()
@@ -55,22 +59,7 @@ fun ProfileScreen(navController: NavHostController) {
         containerColor = Color.Transparent,
         bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            listOf(Color(0xFF0A0A0F), Color(0xFF0D1B2A), Color(0xFF003C3C))
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.25f))
-            )
-
+        NebulaScreenBackground(modifier = Modifier.fillMaxSize()) {
             if (state.loading && profile == null) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
@@ -90,7 +79,7 @@ fun ProfileScreen(navController: NavHostController) {
                         .padding(horizontal = 24.dp, vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Mi Perfil", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("Mi Perfil", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.height(20.dp))
 
                     Box(

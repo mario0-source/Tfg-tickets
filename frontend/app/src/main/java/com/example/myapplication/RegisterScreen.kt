@@ -41,6 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.model.LoginRequest
 import com.example.myapplication.network.RetrofitClient
+import com.example.myapplication.ui.components.NebulaPasswordField
+import com.example.myapplication.ui.components.ValidatedOutlinedField
+import com.example.myapplication.ui.theme.NebulaGreen
+import com.example.myapplication.ui.theme.NebulaScreenBackground
+import com.example.myapplication.util.ApiErrorParser
+import com.example.myapplication.util.FormValidators
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -51,7 +57,7 @@ fun RegisterScreen(
     onNavigateToLogin: () -> Unit
 ) {
 
-    val primaryGreen = Color(0xFF00FF85)
+    val primaryGreen = NebulaGreen
     val context = LocalContext.current
 
     var email by remember { mutableStateOf("") }
@@ -60,24 +66,24 @@ fun RegisterScreen(
 
     var errorMessage by remember { mutableStateOf("") }
     var successMessage by remember { mutableStateOf("") }
+    var submitAttempted by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
+    val emailError = remember(email, submitAttempted) {
+        if (!submitAttempted && email.isBlank()) null else FormValidators.validateEmail(email)
+    }
+    val passwordError = remember(password, submitAttempted) {
+        if (!submitAttempted && password.isBlank()) null else FormValidators.validatePassword(password)
+    }
+    val confirmPasswordError = remember(password, confirmPassword, submitAttempted) {
+        when {
+            !submitAttempted && confirmPassword.isBlank() -> null
+            confirmPassword.isBlank() -> "Confirma la contraseña"
+            confirmPassword != password -> "Las contraseñas no coinciden"
+            else -> null
+        }
+    }
 
-        Image(
-            painter = painterResource(id = R.drawable.imagen_login),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.25f))
-        )
-
+    NebulaScreenBackground(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -124,9 +130,8 @@ fun RegisterScreen(
                 )
             }
 
-            Column {
+            Column(modifier = Modifier.fillMaxWidth()) {
 
-                // EMAIL
                 Text(
                     text = "CORREO ELECTRÓNICO",
                     color = Color(0xFFB0B0C0),
@@ -134,34 +139,18 @@ fun RegisterScreen(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ValidatedOutlinedField(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = {
-                        Text(
-                            "nombre@nebula.io",
-                            color = Color(0xFF9A9A9A)
-                        )
-                    },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.White.copy(alpha = 0.05f),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryGreen,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = primaryGreen
-                    )
+                    label = "Email",
+                    error = emailError,
+                    placeholder = "nombre@nebula.io"
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // PASSWORD
                 Text(
                     text = "CONTRASEÑA",
                     color = Color(0xFFB0B0C0),
@@ -169,35 +158,18 @@ fun RegisterScreen(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                NebulaPasswordField(
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = {
-                        Text(
-                            "••••••••",
-                            color = Color(0xFF9A9A9A)
-                        )
-                    },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.White.copy(alpha = 0.05f),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryGreen,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = primaryGreen
-                    )
+                    label = "Contraseña",
+                    error = passwordError,
+                    placeholder = "Mínimo 6 caracteres"
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // CONFIRM PASSWORD
                 Text(
                     text = "CONFIRMAR CONTRASEÑA",
                     color = Color(0xFFB0B0C0),
@@ -205,48 +177,30 @@ fun RegisterScreen(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                NebulaPasswordField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
-                    placeholder = {
-                        Text(
-                            "••••••••",
-                            color = Color(0xFF9A9A9A)
-                        )
-                    },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.White.copy(alpha = 0.05f),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryGreen,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = primaryGreen
-                    )
+                    label = "Repetir contraseña",
+                    error = confirmPasswordError,
+                    placeholder = "Repite la contraseña"
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
                     onClick = {
-
+                        submitAttempted = true
                         errorMessage = ""
                         successMessage = ""
 
-                        if (password != confirmPassword) {
-
-                            errorMessage = "Las contraseñas no coinciden"
+                        if (emailError != null || passwordError != null || confirmPasswordError != null) {
                             return@Button
                         }
 
                         val request = LoginRequest(
-                            email = email,
+                            email = email.trim(),
                             password = password
                         )
 
@@ -267,8 +221,7 @@ fun RegisterScreen(
 
                                     } else {
 
-                                        errorMessage =
-                                            "No se pudo crear la cuenta"
+                                        errorMessage = ApiErrorParser.message(response)
                                     }
                                 }
 

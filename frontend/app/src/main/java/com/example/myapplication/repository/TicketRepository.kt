@@ -34,4 +34,6 @@ class TicketRepository {
 
     fun updateTicket(id: Int, request: UpdateTicketRequest) =
         RetrofitClient.api.updateTicket(id, request)
+
+    suspend fun deleteTicket(id: Int) = RetrofitClient.api.deleteTicket(id)
 }
